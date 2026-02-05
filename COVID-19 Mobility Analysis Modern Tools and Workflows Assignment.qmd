@@ -1,0 +1,114 @@
+---
+title: "COVID-19 Mobility Analysis: Modern Tools & Workflows Assignment"
+author: "Lukas Rädle"
+format: html
+editor: visual
+---
+
+# COVID-19 Mobility Analysis: Modern Tools & Workflows Assignment
+
+## Project Overview
+
+This project analyzes the relationship between human mobility patterns and COVID-19 case trends in the United States during 2021. Using publicly available data, we perform descriptive analyses and regression modeling to understand how different types of mobility (retail, grocery, parks, workplaces, etc.) correlate with COVID-19 cases.
+
+## Research Questions
+
+1.  How do different mobility patterns relate to COVID-19 case counts?
+2.  Is there a weekend effect in COVID-19 case reporting?
+3.  Do lagged mobility patterns predict future case counts?
+4.  Which mobility factors are most strongly associated with transmission?
+
+## Data Source
+
+**Dataset:** US COVID-19 & Human Mobility (2021)\
+**Source:** Kaggle\
+**License:** CC0: Public Domain\
+**Citation:** Askar, A. (n.d.). US COVID-19 & human mobility (2021) \[Data set\]. Kaggle. Retrieved February 4, 2026, from <https://www.kaggle.com/datasets/amroaskar/us-covid-19-and-human-mobility-2021>
+
+**Codebook and Documentation:** Available at the Kaggle link above
+
+**Note on Data Accessibility:** The dataset is freely available under CC0: Public Domain license. Due to file size (\>100MB), the data is not included in this repository. Please download it from Kaggle and place it in `data/processed/IntegratedData.csv` before running analyses.
+
+## Code Adaptation
+
+Original Python analysis adapted to R:\
+sumedh1507. (n.d.). US COVID-19 and human mobility insights \[Kaggle Notebook\]. Kaggle. Retrieved February 4, 2026, from <https://www.kaggle.com/code/sumedh1507/us-covid-19-and-human-mobility-insights>
+
+## Repository Structure
+
+```         
+.
+├── README.md                    # This file
+├── run.sh                       # Shell script to run all analyses
+├── .gitignore                   # Files to ignore in version control
+├── renv.lock                    # R package dependencies (if using renv)
+├── install.R                    # Package installation for Binder
+├── data/
+│   ├── processed/
+│   │   └── IntegratedData.csv   # Main dataset (download from Kaggle)
+│   └── codebook.md              # Data dictionary
+├── code/
+│   ├── 01_setup.R               # Package loading and setup
+│   ├── 02_descriptive_analysis.R # Descriptive statistics and plots
+│   ├── 03_regression_analysis.R  # Regression models
+│   └── 04_report.qmd            # Quarto report (literate programming)
+├── output/
+│   ├── figures/                 # All generated plots
+│   └── tables/                  # Regression summaries
+└── docs/
+    └── session_info.txt         # R session information
+```
+
+## Requirements
+
+### Software
+
+-   R (\>= 4.0.0)
+-   RStudio (recommended)
+-   Quarto (for rendering the report)
+
+### R Packages
+
+``` r
+tidyverse (>= 2.0.0)
+here (>= 1.0.0)
+zoo (>= 1.8.0)
+scales (>= 1.3.0)
+patchwork (>= 1.2.0)
+quarto (>= 1.4)
+```
+
+Full package versions are documented in `docs/session_info.txt`
+
+## How to Run
+
+### Option 1: Run All Analyses (Recommended)
+
+``` bash
+# In terminal/Git Bash
+bash run.sh
+```
+
+This will: 1. Install required packages 2. Load and process data 3. Generate descriptive statistics and plots 4. Run regression analyses 5. Create the final HTML report
+
+### Option 2: Run Individual Scripts
+
+``` r
+# In R/RStudio
+source("code/01_setup.R")
+source("code/02_descriptive_analysis.R")
+source("code/03_regression_analysis.R")
+
+# Render report
+quarto::quarto_render("code/04_report.qmd")
+```
+
+## Key Findings
+
+-   **Multiple regression** (R² = 0.30) shows grocery/pharmacy mobility increases cases while retail and parks decrease cases
+
+-   **Indoor vs outdoor:** Grocery shopping (indoor) shows highest transmission risk; parks (outdoor) are protective
+
+-   **Weekend effect:** Cases reported on weekends are \~17 lower (p \< 0.001) due to reporting lag
+
+-   **Predictive power:** Lagged mobility patterns show weak predictive power (R² \< 0.01), suggesting concurrent rather than causal relationship

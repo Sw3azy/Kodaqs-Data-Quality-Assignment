@@ -1,0 +1,558 @@
+---
+title: "04_Report"
+format: html
+editor: visual
+---
+
+# Executive Summary
+
+This report analyzes the relationship between human mobility patterns and COVID-19 case trends in the United States during 2021. Using county-level data integrated with Google Community Mobility Reports, we examine how different types of mobility (retail, grocery, parks, workplaces, transit, and residential) correlate with COVID-19 transmission.
+
+**Key Findings:**
+
+-   Multiple regression analysis explains 30% of case variance
+-   Grocery/pharmacy mobility shows positive association with cases (indoor risk)
+-   Retail and parks mobility show negative associations (protective effects)
+-   Weekend reporting effect detected but minimal practical impact
+-   Time-lagged models show weak predictive power
+
+------------------------------------------------------------------------
+
+# Introduction
+
+## Background
+
+The COVID-19 pandemic prompted unprecedented changes in human mobility patterns through public health interventions, lockdowns, and voluntary behavioral changes. Understanding the relationship between mobility and disease transmission is crucial for evidence-based policy making.
+
+## Research Questions
+
+1.  How do different mobility patterns relate to COVID-19 case counts?
+2.  Is there a weekend effect in COVID-19 case reporting?
+3.  Do lagged mobility patterns predict future case counts?
+4.  Which mobility factors are most strongly associated with transmission?
+
+## Data Source
+
+**Dataset:** US COVID-19 & Human Mobility (2021)\
+**Source:** Kaggle (CC0: Public Domain)\
+**Citation:** Askar, A. (n.d.). *US COVID-19 & human mobility (2021)* \[Data set\]. Kaggle. https://www.kaggle.com/datasets/amroaskar/us-covid-19-and-human-mobility-2021
+
+The dataset integrates: - COVID-19 case and death counts (county-level) - Google Community Mobility Reports - Temporal indicators (weekends, holidays)
+
+------------------------------------------------------------------------
+
+# Methods
+
+## Setup
+
+```{r setup}
+#| code-fold: false
+
+# Load required packages
+library(tidyverse)
+library(here)
+library(zoo)
+library(scales)
+library(patchwork)
+library(knitr)
+
+# Set theme
+theme_set(theme_minimal())
+options(scipen = 999)
+```
+
+## Data Loading
+
+```{r load-data}
+# Load dataset
+df <- read_csv("IntegratedData.csv")
+```
+
+```{r data-preview}
+# Preview first few rows
+head(df) %>%
+  select(date, county, state, cases, daily_cases, retail_recreation, grocery_pharmacy) %>%
+  kable(caption = "Sample of dataset (first 6 rows)")
+```
+
+------------------------------------------------------------------------
+
+# Descriptive Analysis
+
+## Geographic Distribution of Cases
+
+```{r total-cases-state}
+#| fig-width: 10
+#| fig-height: 6
+
+# Top 10 states by total cases
+total_cases_by_state <- df %>%
+  group_by(state) %>%
+  summarize(total_cases = sum(cases, na.rm = TRUE)) %>%
+  arrange(desc(total_cases)) %>%
+  slice_head(n = 10)
+
+ggplot(total_cases_by_state, aes(x = reorder(state, total_cases), y = total_cases)) +
+  geom_col(fill = "steelblue") +
+  coord_flip() +
+  scale_y_continuous(labels = comma) +
+  labs(title = "Top 10 States by Total COVID-19 Cases",
+       subtitle = "Cumulative cases in 2021",
+       x = "State",
+       y = "Total Cases") +
+  theme(plot.title = element_text(face = "bold"))
+```
+
+California, Texas, and Florida led in total case counts, reflecting both large populations and varying public health responses.
+
+## Temporal Trends
+
+```{r daily-cases-trend}
+#| fig-width: 10
+#| fig-height: 6
+
+# Average daily cases over time
+daily_avg <- df %>%
+  group_by(date) %>%
+  summarize(avg_daily_cases = mean(daily_cases, na.rm = TRUE))
+
+ggplot(daily_avg, aes(x = date, y = avg_daily_cases)) +
+  geom_line(color = "darkred", linewidth = 0.8) +
+  scale_y_continuous(labels = comma) +
+  labs(title = "Average Daily Cases Over Time",
+       subtitle = "National average across all counties",
+       x = "Date",
+       y = "Average Daily Cases") +
+  theme(plot.title = element_text(face = "bold"))
+```
+
+Daily case counts show clear wave patterns throughout 2021, with peaks corresponding to different variant surges.
+
+## Smoothing with Moving Averages
+
+```{r moving-average}
+#| fig-width: 10
+#| fig-height: 6
+
+# 7-day moving average (California example)
+df_ma <- df %>%
+  filter(state == "california") %>%          # change to "CA" if needed
+  group_by(date) %>%
+  summarise(daily_cases = sum(daily_cases, na.rm = TRUE), .groups = "drop") %>%
+  arrange(date) %>%
+  mutate(cases_7day_avg = rollmean(daily_cases, k = 7, fill = NA, align = "right"))
+
+ggplot(df_ma, aes(x = date)) +
+  geom_line(aes(y = daily_cases), color = "gray70", alpha = 0.5, linewidth = 0.5) +
+  geom_line(aes(y = cases_7day_avg), color = "darkblue", linewidth = 1) +
+  scale_y_continuous(labels = comma) +
+  labs(
+    title = "Daily Cases vs 7-Day Moving Average",
+    subtitle = "California, 2021",
+    x = "Date",
+    y = "Cases",
+    caption = "Gray: daily cases | Blue: 7-day average"
+  ) +
+  theme(plot.title = element_text(face = "bold"))
+
+nrow(df_ma)
+summary(df_ma$daily_cases)
+summary(df_ma$cases_7day_avg)
+head(df_ma)
+
+```
+
+The 7-day moving average smooths out day-to-day volatility, revealing clearer trend patterns.
+
+## Case Fatality Rate
+
+```{r cfr-trend}
+#| fig-width: 10
+#| fig-height: 6
+
+# Case fatality rate over time
+cfr_data <- df %>%
+  group_by(date) %>%
+  summarize(total_cases = sum(cases, na.rm = TRUE),
+            total_deaths = sum(deaths, na.rm = TRUE)) %>%
+  mutate(cfr = (total_deaths / total_cases) * 100) %>%
+  filter(!is.infinite(cfr), !is.na(cfr))
+
+ggplot(cfr_data, aes(x = date, y = cfr)) +
+  geom_line(color = "darkgreen", linewidth = 0.8) +
+  labs(title = "Case Fatality Rate Over Time",
+       subtitle = "National aggregate",
+       x = "Date",
+       y = "Case Fatality Rate (%)") +
+  theme(plot.title = element_text(face = "bold"))
+```
+
+The case fatality rate shows a declining trend throughout 2021, likely reflecting vaccine rollout and improved treatments.
+
+## Weekend Reporting Effect
+
+```{r weekend-comparison}
+#| fig-width: 10
+#| fig-height: 6
+
+# Weekend vs weekday comparison
+weekend_comparison <- df %>%
+  mutate(day_type = ifelse(is_weekend == 1, "Weekend", "Weekday")) %>%
+  group_by(day_type) %>%
+  summarize(avg_daily_cases = mean(daily_cases, na.rm = TRUE),
+            avg_daily_deaths = mean(daily_deaths, na.rm = TRUE))
+
+ggplot(weekend_comparison, aes(x = day_type, y = avg_daily_cases, fill = day_type)) +
+  geom_col(show.legend = FALSE) +
+  scale_fill_manual(values = c("Weekday" = "coral", "Weekend" = "lightblue")) +
+  scale_y_continuous(labels = comma) +
+  labs(title = "Average Daily Cases: Weekday vs Weekend",
+       subtitle = "Evidence of reporting lag on weekends",
+       x = "",
+       y = "Average Daily Cases") +
+  theme(plot.title = element_text(face = "bold"))
+```
+
+```{r weekend-table}
+weekend_comparison %>%
+  kable(digits = 1, 
+        caption = "Average daily cases and deaths by day type",
+        col.names = c("Day Type", "Avg Daily Cases", "Avg Daily Deaths"))
+```
+
+Weekend case counts are lower, suggesting administrative reporting delays rather than actual epidemiological patterns.
+
+------------------------------------------------------------------------
+
+# Regression Analysis
+
+## Simple Linear Regression: Mobility vs Cases
+
+```{r simple-regression}
+#| fig-width: 10
+#| fig-height: 6
+
+# Prepare data
+mobility_cases <- df %>%
+  filter(!is.na(retail_recreation), !is.na(daily_cases)) %>%
+  group_by(date) %>%
+  summarize(avg_retail = mean(retail_recreation, na.rm = TRUE),
+            avg_cases = mean(daily_cases, na.rm = TRUE))
+
+# Fit model
+mobility_model <- lm(avg_cases ~ avg_retail, data = mobility_cases)
+
+# Extract statistics
+r_squared <- summary(mobility_model)$r.squared
+p_value <- summary(mobility_model)$coefficients[2, 4]
+intercept <- coef(mobility_model)[1]
+slope <- coef(mobility_model)[2]
+
+eq_label <- paste0("y = ", round(slope, 2), "x + ", round(intercept, 2))
+r2_label <- paste0("R² = ", round(r_squared, 3))
+p_label <- ifelse(p_value < 0.001, "p < 0.001", paste0("p = ", round(p_value, 3)))
+
+# Plot
+ggplot(mobility_cases, aes(x = avg_retail, y = avg_cases)) +
+  geom_point(alpha = 0.5, color = "purple", size = 2) +
+  geom_smooth(method = "lm", se = TRUE, color = "darkviolet", fill = "lavender") +
+  annotate("text", 
+           x = min(mobility_cases$avg_retail) + 5,
+           y = max(mobility_cases$avg_cases) * 0.95,
+           label = paste(eq_label, "\n", r2_label, "\n", p_label),
+           hjust = 0, vjust = 1,
+           size = 4.5, 
+           fontface = "bold",
+           color = "darkblue") +
+  scale_y_continuous(labels = comma) +
+  labs(title = "Impact of Retail Mobility on Daily COVID-19 Cases",
+       subtitle = "Linear regression showing inverse relationship",
+       x = "Retail & Recreation Mobility Change (%)",
+       y = "Average Daily Cases") +
+  theme(plot.title = element_text(face = "bold", size = 13),
+        plot.subtitle = element_text(size = 10))
+```
+
+**Interpretation:** The simple regression shows a statistically significant (p \< 0.001) negative relationship, but explains only 3.9% of variance. For every 1% increase in retail mobility, average daily cases decrease by 0.80.
+
+## Multiple Regression: All Mobility Factors
+
+```{r multiple-regression}
+#| fig-width: 10
+#| fig-height: 7
+
+# Prepare full mobility data
+mobility_full <- df %>%
+  filter(!is.na(retail_recreation), !is.na(daily_cases),
+         !is.na(grocery_pharmacy), !is.na(parks),
+         !is.na(transit), !is.na(workplaces)) %>%
+  group_by(date) %>%
+  summarize(
+    avg_cases = mean(daily_cases, na.rm = TRUE),
+    retail = mean(retail_recreation, na.rm = TRUE),
+    grocery = mean(grocery_pharmacy, na.rm = TRUE),
+    parks = mean(parks, na.rm = TRUE),
+    transit = mean(transit, na.rm = TRUE),
+    workplaces = mean(workplaces, na.rm = TRUE),
+    residential = mean(residential, na.rm = TRUE)
+  )
+
+# Fit multiple regression
+full_model <- lm(avg_cases ~ retail + grocery + parks + transit + workplaces + residential, 
+                 data = mobility_full)
+
+# Extract coefficients
+coef_summary <- summary(full_model)$coefficients
+coef_data <- data.frame(
+  term = c("Retail/Recreation", "Grocery/Pharmacy", "Parks", 
+           "Transit", "Workplaces", "Residential"),
+  estimate = coef_summary[-1, 1],
+  std.error = coef_summary[-1, 2],
+  p.value = coef_summary[-1, 4]
+) %>%
+  mutate(significant = p.value < 0.05)
+
+# Plot coefficients
+ggplot(coef_data, aes(x = reorder(term, estimate), y = estimate, fill = significant)) +
+  geom_col() +
+  geom_errorbar(aes(ymin = estimate - std.error, ymax = estimate + std.error), 
+                width = 0.2, linewidth = 1) +
+  coord_flip() +
+  scale_fill_manual(values = c("TRUE" = "steelblue", "FALSE" = "gray70"),
+                    labels = c("Not Significant (p ≥ 0.05)", "Significant (p < 0.05)")) +
+  labs(title = "Multiple Regression: Mobility Factors Predicting COVID-19 Cases",
+       subtitle = "Coefficient estimates with standard errors",
+       x = "Mobility Category",
+       y = "Coefficient Estimate (Change in daily cases per 1% mobility change)",
+       fill = "Statistical Significance",
+       caption = paste0("Model R² = ", round(summary(full_model)$r.squared, 3), 
+                       " | Adjusted R² = ", round(summary(full_model)$adj.r.squared, 3))) +
+  theme(plot.title = element_text(face = "bold"),
+        legend.position = "bottom")
+```
+
+```{r regression-table}
+# Summary table
+coef_data %>%
+  mutate(p.value = format.pval(p.value, digits = 3, eps = 0.001)) %>%
+  kable(digits = 2,
+        caption = "Multiple regression coefficients",
+        col.names = c("Mobility Factor", "Coefficient", "Std. Error", "p-value", "Significant"))
+```
+
+**Key Findings:**
+
+-   **Model Performance:** R² = 0.300 (explains 30% of variance)
+-   **Significant Predictors:**
+    -   Grocery/Pharmacy (+8.93): Increased visits → increased cases
+    -   Retail/Recreation (-4.98): Increased visits → decreased cases
+    -   Parks (-1.48): Increased visits → decreased cases
+-   **Non-significant:** Transit, Workplaces, Residential
+
+**Interpretation:** Indoor activities (grocery shopping) show highest transmission risk, while outdoor activities (parks) and retail spaces are protective. This suggests venue type and ventilation matter more than overall mobility levels.
+
+## Time-Lagged Analysis
+
+```{r lagged-regression}
+#| fig-width: 8
+#| fig-height: 6
+
+# Create lagged variables
+mobility_lagged <- mobility_cases %>%
+  arrange(date) %>%
+  mutate(
+    retail_lag7 = lag(avg_retail, 7),
+    retail_lag14 = lag(avg_retail, 14)
+  ) %>%
+  filter(!is.na(retail_lag7), !is.na(retail_lag14))
+
+# Fit lagged models
+model_lag7 <- lm(avg_cases ~ retail_lag7, data = mobility_lagged)
+model_lag14 <- lm(avg_cases ~ retail_lag14, data = mobility_lagged)
+
+# Compare R-squared
+lag_comparison <- data.frame(
+  Lag = factor(c("No Lag", "7-Day Lag", "14-Day Lag"), 
+               levels = c("No Lag", "7-Day Lag", "14-Day Lag")),
+  R_squared = c(
+    summary(mobility_model)$r.squared,
+    summary(model_lag7)$r.squared,
+    summary(model_lag14)$r.squared
+  )
+)
+
+ggplot(lag_comparison, aes(x = Lag, y = R_squared, fill = Lag)) +
+  geom_col(show.legend = FALSE, width = 0.7) +
+  geom_text(aes(label = sprintf("R² = %.3f", R_squared)), 
+            vjust = -0.5, fontface = "bold", size = 5) +
+  scale_fill_manual(values = c("#66C2A5", "#FC8D62", "#8DA0CB")) +
+  ylim(0, max(lag_comparison$R_squared) * 1.15) +
+  labs(title = "Predictive Power of Mobility on Future COVID-19 Cases",
+       subtitle = "Comparing different time lags",
+       x = "Time Lag",
+       y = "R-squared Value") +
+  theme(plot.title = element_text(face = "bold"))
+```
+
+**Interpretation:** Time-lagged models show very weak predictive power (R² \< 0.01), suggesting mobility and cases change concurrently rather than mobility predicting future cases. This indicates other factors (variants, testing capacity, interventions) dominate case dynamics.
+
+## Weekend Effect Model
+
+```{r weekend-regression}
+#| fig-width: 8
+#| fig-height: 6
+
+# Prepare data
+weekend_model_data <- df %>%
+  mutate(is_weekend_factor = factor(is_weekend, labels = c("Weekday", "Weekend"))) %>%
+  filter(!is.na(daily_cases))
+
+# Fit model
+weekend_model <- lm(daily_cases ~ is_weekend_factor, data = weekend_model_data)
+
+# Summarize predictions
+weekend_pred <- weekend_model_data %>%
+  group_by(is_weekend_factor) %>%
+  summarize(
+    mean_cases = mean(daily_cases, na.rm = TRUE),
+    se = sd(daily_cases, na.rm = TRUE) / sqrt(n()),
+    ci_lower = mean_cases - 1.96 * se,
+    ci_upper = mean_cases + 1.96 * se
+  )
+
+# Plot
+ggplot(weekend_pred, aes(x = is_weekend_factor, y = mean_cases, fill = is_weekend_factor)) +
+  geom_col(show.legend = FALSE, width = 0.6) +
+  geom_errorbar(aes(ymin = ci_lower, ymax = ci_upper), width = 0.2, linewidth = 1) +
+  geom_text(aes(label = sprintf("%.1f", mean_cases)), 
+            vjust = -1.5, fontface = "bold", size = 5) +
+  scale_fill_manual(values = c("Weekday" = "coral", "Weekend" = "lightblue")) +
+  scale_y_continuous(labels = comma) +
+  labs(title = "Weekend Effect on COVID-19 Cases",
+       subtitle = "Mean daily cases with 95% confidence intervals",
+       x = "",
+       y = "Average Daily Cases",
+       caption = paste0("Coefficient = -16.8 | p-value < 0.001")) +
+  theme(plot.title = element_text(face = "bold"))
+```
+
+**Interpretation:** Weekend cases are statistically significantly lower (16.8 fewer cases, p \< 0.001), but the model explains only 0.09% of variance. This is an administrative artifact (reporting delay) rather than an epidemiological pattern.
+
+------------------------------------------------------------------------
+
+# Model Comparison
+
+```{r model-comparison-table}
+# Create comparison table
+model_comparison <- data.frame(
+  Model = c("Simple Regression (Retail)", 
+            "Multiple Regression (All Mobility)", 
+            "7-Day Lag", 
+            "14-Day Lag", 
+            "Weekend Effect"),
+  R_squared = c(
+    summary(mobility_model)$r.squared,
+    summary(full_model)$r.squared,
+    summary(model_lag7)$r.squared,
+    summary(model_lag14)$r.squared,
+    summary(weekend_model)$r.squared
+  ),
+  Adj_R_squared = c(
+    summary(mobility_model)$adj.r.squared,
+    summary(full_model)$adj.r.squared,
+    summary(model_lag7)$adj.r.squared,
+    summary(model_lag14)$adj.r.squared,
+    summary(weekend_model)$adj.r.squared
+  ),
+  Key_Finding = c(
+    "Weak negative effect",
+    "BEST MODEL - Indoor vs outdoor risk",
+    "Poor predictive power",
+    "Poor predictive power",
+    "Administrative artifact"
+  )
+)
+
+model_comparison %>%
+  kable(digits = 4,
+        caption = "Comparison of all regression models",
+        col.names = c("Model", "R²", "Adjusted R²", "Key Finding"))
+```
+
+**Best Model:** Multiple regression with all mobility factors (R² = 0.30)
+
+------------------------------------------------------------------------
+
+# Discussion
+
+## Key Insights
+
+1.  **Multiple Factors Matter:** Including all mobility types improves explanatory power from 4% to 30%
+
+2.  **Indoor vs Outdoor Risk:**
+
+    -   Grocery/pharmacy (indoor, crowded) shows highest risk (+8.93 coefficient)
+    -   Parks (outdoor, dispersed) are protective (-1.48 coefficient)
+    -   Suggests ventilation and crowd density matter more than total mobility
+
+3.  **Concurrent Not Predictive:** Lagged models fail, suggesting mobility responds to cases as much as causing them
+
+4.  **Reporting Artifacts:** Weekend effect is real statistically but trivial practically
+
+## Limitations
+
+-   **70% unexplained variance:** Other factors (vaccination, variants, weather, testing capacity, policy) likely dominate
+-   **Ecological fallacy:** County-level patterns may not reflect individual-level risk
+-   **Observational data:** Cannot establish causation
+-   **Mobility bias:** Smartphone data may not represent all demographics equally
+-   **Temporal scope:** Analysis limited to 2021; patterns may differ in other periods
+
+## Policy Implications
+
+1.  **Venue-specific interventions:** Focus on indoor, crowded spaces (grocery stores) rather than blanket mobility restrictions
+2.  **Outdoor activities safe:** Encourage outdoor recreation as low-risk alternative
+3.  **Real-time monitoring:** Concurrent relationship suggests mobility data useful for nowcasting, not forecasting
+4.  **Multifactor approach:** No single mobility metric sufficient; need comprehensive view
+
+------------------------------------------------------------------------
+
+# Conclusions
+
+This analysis demonstrates that human mobility patterns explain 30% of COVID-19 case variation when multiple mobility types are considered together. The most important finding is the **indoor vs outdoor risk distinction**: grocery/pharmacy visits (indoor, crowded) strongly associate with increased cases, while parks (outdoor, dispersed) are protective.
+
+Time-lagged analysis reveals mobility is not a strong predictor of future cases, suggesting the relationship is concurrent rather than causal. This indicates other factors—particularly vaccination rates, variant dynamics, and testing capacity—play dominant roles in case trajectories.
+
+For public health policy, these findings support **venue-specific interventions** rather than blanket mobility restrictions, with particular attention to indoor crowded spaces.
+
+------------------------------------------------------------------------
+
+# Reproducibility Information
+
+```{r session-info}
+# R session information
+sessionInfo()
+```
+
+**Software Versions:** - R version: `r R.version.string` - RStudio version: (if applicable) - Quarto version: (if applicable)
+
+**Key Packages:**
+
+```{r package-versions}
+# Display key package versions
+pkgs <- c("tidyverse", "here", "zoo", "scales", "patchwork")
+versions <- sapply(pkgs, function(pkg) as.character(packageVersion(pkg)))
+data.frame(Package = pkgs, Version = versions, row.names = NULL) %>%
+  kable(caption = "Package versions used in this analysis")
+```
+
+------------------------------------------------------------------------
+
+# References
+
+Askar, A. (n.d.). *US COVID-19 & human mobility (2021)* \[Data set\]. Kaggle. Retrieved February 4, 2026, from https://www.kaggle.com/datasets/amroaskar/us-covid-19-and-human-mobility-2021
+
+sumedh1507. (n.d.). *US COVID-19 and human mobility insights* \[Kaggle Notebook\]. Kaggle. Retrieved February 4, 2026, from https://www.kaggle.com/code/sumedh1507/us-covid-19-and-human-mobility-insights
+
+Google LLC. (2021). *Google COVID-19 Community Mobility Reports*. https://www.google.com/covid19/mobility/
+
+------------------------------------------------------------------------

@@ -1,0 +1,6 @@
+Model,R_squared,Adj_R_squared
+Simple Regression,0.0388,0.0362
+Multiple Regression,0.2995,0.2878
+7-Day Lag,0.0075,0.0046
+14-Day Lag,0.0088,0.006
+Weekend Effect,9e-4,9e-4

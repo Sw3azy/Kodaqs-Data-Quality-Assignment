@@ -1,0 +1,52 @@
+---
+title: "Data Codebook"
+format: html
+editor: visual
+---
+
+# Data Codebook
+
+## Dataset Information
+
+**Source:** US COVID-19 & Human Mobility (2021)\
+**URL:** https://www.kaggle.com/datasets/amroaskar/us-covid-19-and-human-mobility-2021\
+**License:** CC0 Public Domain\
+**Time Period:** 2021\
+**Geographic Level:** US County-level data
+
+## Variables
+
+| Variable | Type | Description |
+|----|----|----|
+| `date` | Date | Date of observation (YYYY-MM-DD) |
+| `county` | Character | County name |
+| `state` | Character | US State name |
+| `fips` | Character | Federal Information Processing Standard county code |
+| `cases` | Numeric | Cumulative COVID-19 cases |
+| `deaths` | Numeric | Cumulative COVID-19 deaths |
+| `daily_cases` | Numeric | New cases reported on this date |
+| `daily_deaths` | Numeric | New deaths reported on this date |
+| `day_of_week` | Character | Day name (Monday-Sunday) |
+| `is_weekend` | Binary | 1 = Weekend, 0 = Weekday |
+| `is_holiday` | Binary | 1 = US Federal Holiday, 0 = Regular day |
+| `retail_recreation` | Numeric | \% change in mobility to retail/recreation from baseline |
+| `grocery_pharmacy` | Numeric | \% change in mobility to grocery/pharmacy from baseline |
+| `parks` | Numeric | \% change in mobility to parks from baseline |
+| `transit` | Numeric | \% change in mobility to transit stations from baseline |
+| `workplaces` | Numeric | \% change in mobility to workplaces from baseline |
+| `residential` | Numeric | \% change in time spent at residential locations from baseline |
+| `daily_cases_calc` | Numeric | Calculated daily cases (alternative calculation) |
+| `daily_deaths_calc` | Numeric | Calculated daily deaths (alternative calculation) |
+
+## Mobility Data Notes
+
+-   Mobility data sourced from Google Community Mobility Reports
+-   Baseline = median value for the corresponding day of the week during Jan 3 - Feb 6, 2020
+-   Negative values indicate decrease from baseline; positive values indicate increase
+-   Missing values may occur when insufficient data to preserve privacy
+
+## Data Processing
+
+-   Original data downloaded from Kaggle
+-   No modifications made to variable values
+-   Analysis uses county-aggregated daily data
