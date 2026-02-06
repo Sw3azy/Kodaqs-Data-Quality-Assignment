@@ -25,7 +25,7 @@ This project analyzes the relationship between human mobility patterns and COVID
 **License:** CC0: Public Domain\
 **Citation:** Askar, A. (n.d.). US COVID-19 & human mobility (2021) \[Data set\]. Kaggle. Retrieved February 4, 2026, from <https://www.kaggle.com/datasets/amroaskar/us-covid-19-and-human-mobility-2021>
 
-**Codebook and Documentation:** Available at the Kaggle link above
+**Codebook and Documentation:** Available at the Kaggle link above as well as in the "Codebook" file.
 
 **Note on Data Accessibility:** The dataset is freely available under CC0: Public Domain license. Due to file size (\>100MB), the data is not included in this repository. Please download it from Kaggle and place it in `data/processed/IntegratedData.csv` before running analyses.
 
@@ -43,15 +43,13 @@ sumedh1507. (n.d.). US COVID-19 and human mobility insights \[Kaggle Notebook\].
 ├── .gitignore                   # Files to ignore in version control
 ├── renv.lock                    # R package dependencies (if using renv)
 ├── install.R                    # Package installation for Binder
-├── data/
-│   ├── processed/
-│   │   └── IntegratedData.csv   # Main dataset (download from Kaggle)
-│   └── codebook.md              # Data dictionary
+├── IntegratedData.csv   # Main dataset (download from Kaggle)
+│── codebook.md              # Data dictionary
 ├── code/
-│   ├── 01_setup.R               # Package loading and setup
-│   ├── 02_descriptive_analysis.R # Descriptive statistics and plots
-│   ├── 03_regression_analysis.R  # Regression models
-│   └── 04_report.qmd            # Quarto report (literate programming)
+│── 01_setup.R               # Package loading and setup
+│── 02_descriptive_analysis.R # Descriptive statistics and plots
+│── 03_regression_analysis.R  # Regression models
+│── 04_report.qmd            # Quarto report (literate programming)
 ├── output/
 │   ├── figures/                 # All generated plots
 │   └── tables/                  # Regression summaries

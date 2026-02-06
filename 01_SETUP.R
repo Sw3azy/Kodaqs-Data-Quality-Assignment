@@ -1,38 +1,57 @@
 # ==============================================================================
 # Script: 01_setup.R
 # Purpose: Load packages and configure environment
-# Author: Lukas Rädle
-# Date: February 2026
 # ==============================================================================
 
+cat("Starting setup...\n")
+
 # Load required packages ----
-cat("Loading required packages...\n")
+suppressPackageStartupMessages({
+  library(tidyverse)
+  library(here)
+  library(zoo)
+  library(scales)
+  library(patchwork)
+})
 
+cat("Packages loaded successfully\n")
 
-library(tidyverse)   # Data manipulation and visualization
-library(here)        # Project-relative paths
-library(zoo)         # Rolling averages
-library(scales)      # Scale functions for plots
-library(patchwork)   # Combining plots
+# Verify data file exists ----
+data_path <- here("IntegratedData.csv")
 
-# Create output directories if they don't exist ----
-cat("Creating output directories...\n")
+if (!file.exists(data_path)) {
+  stop("ERROR: Data file not found at: ", data_path)
+}
 
-dir.create(here("output"), showWarnings = FALSE)
-dir.create(here("output", "figures"), showWarnings = FALSE)
-dir.create(here("output", "tables"), showWarnings = FALSE)
-dir.create(here("docs"), showWarnings = FALSE)
+cat("Data file verified\n")
+
+# Create output directories ----
+dirs <- c(
+  here("output"),
+  here("output", "figures"),
+  here("output", "tables"),
+  here("docs")
+)
+
+for (d in dirs) {
+  if (!dir.exists(d)) {
+    dir.create(d, recursive = TRUE)
+  }
+}
+
+cat("Output directories ready\n")
 
 # Set global options ----
-options(scipen = 999)  # Disable scientific notation
-theme_set(theme_minimal())  # Set default ggplot theme
+options(scipen = 999)
+theme_set(theme_minimal())
 
-# Save session info for reproducibility ----
-cat("Saving session info...\n")
-sink(here("docs", "session_info.txt"))
+# Save session info ----
+session_file <- here("docs", "session_info.txt")
+sink(session_file)
 cat("R Session Information\n")
-cat("====================\n\n")
+cat("=====================\n\n")
 print(sessionInfo())
 sink()
 
+cat("Session info saved\n")
 cat("Setup complete!\n\n")
