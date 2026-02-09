@@ -16,6 +16,8 @@ This report analyzes the relationship between human mobility patterns and COVID-
 -   Weekend reporting effect detected but minimal practical impact
 -   Time-lagged models show weak predictive power
 
+The suplementary materials can also be found on Github: <https://github.com/Sw3azy/Kodaqs-Data-Quality-Assignment.git>
+
 ------------------------------------------------------------------------
 
 # Introduction
@@ -512,7 +514,7 @@ model_comparison %>%
 1.  **Venue-specific interventions:** Focus on indoor, crowded spaces (grocery stores) rather than blanket mobility restrictions
 2.  **Outdoor activities safe:** Encourage outdoor recreation as low-risk alternative
 3.  **Real-time monitoring:** Concurrent relationship suggests mobility data useful for nowcasting, not forecasting
-4.  **Multifactor approach:** No single mobility metric sufficient; need comprehensive view
+4.  **Multifactor approach:** No single mobility metric sufficient; need of A comprehensive view
 
 ------------------------------------------------------------------------
 
